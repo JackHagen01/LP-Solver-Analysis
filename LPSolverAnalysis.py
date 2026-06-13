@@ -1,5 +1,7 @@
+import sys
 from scipy.optimize import linprog
 import time
+import statistics
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) # Three of the methods used are deprecated
 
@@ -25,16 +27,19 @@ def generate_kleeminty(n):
 
     return {"c" : c, "A_ub" : A_ub, "b_ub" : b_ub}
 
-def solve_lps():
+def solve_lps(n):
     for lp_name in linprogs.keys():
         print(f"Linear Program: {lp_name}\n")
         lp = linprogs[lp_name]
         for method in solvers.keys():
-            start_time = time.perf_counter()
-            result = linprog(c=lp["c"],A_ub=lp["A_ub"],b_ub=lp["b_ub"],method=method,options={"presolve": False})
-            end_time = time.perf_counter()
-            solvers[method][lp_name] = [result.nit,end_time - start_time]
-            print(f"{method}, Iterations: {result.nit}, Runtime: {end_time - start_time}\n")
+            times = []
+            for _ in range(n):
+                start_time = time.perf_counter()
+                result = linprog(c=lp["c"],A_ub=lp["A_ub"],b_ub=lp["b_ub"],method=method,options={"presolve": False})
+                end_time = time.perf_counter()
+                times.append(end_time - start_time)
+            solvers[method][lp_name] = [result.nit,statistics.mean(times)]
+            print(f"{method}, Iterations: {result.nit}, Mean Runtime: {statistics.mean(times)}\n")
 
 def minmax_iterations():
     max_dict = {}
@@ -66,15 +71,15 @@ def minmax_times():
         print(f"Max Runtime for {lp_name}:\n{max_dict[lp_name][0]} : {max_dict[lp_name][1]}")
         print(f"Min Runtime for {lp_name}:\n{min_dict[lp_name][0]} : {min_dict[lp_name][1]}\n")
 
-def main():
+def main(n):
     linprogs["Klee-Minty 3-Cube"] = generate_kleeminty(3)
     linprogs["Klee-Minty 5-Cube"] = generate_kleeminty(5)
     linprogs["Klee-Minty 7-Cube"] = generate_kleeminty(7)
     linprogs["Klee-Minty 9-Cube"] = generate_kleeminty(9) # Dimensions greater than 9 are unstable
-    solve_lps()
+    solve_lps(int(n))
     minmax_iterations()
     minmax_times()
     return
     
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1])
